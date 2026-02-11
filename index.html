@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NCA ECC-2:2024 — Interactive Compliance Dashboard</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap');
+  
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg-primary: #0a0e1a;
+    --bg-secondary: #111827;
+    --bg-card: rgba(255,255,255,0.03);
+    --border: rgba(255,255,255,0.06);
+    --text-primary: #f1f5f9;
+    --text-secondary: #cbd5e1;
+    --text-muted: #64748b;
+    --text-dim: #94a3b8;
+    --teal: #5eead4;
+    --green: #34d399;
+    --amber: #fbbf24;
+    --red: #f87171;
+    --purple: #a78bfa;
+    --orange: #fb923c;
+    --d1: #0F4C5C; --d2: #1A6B4A; --d3: #7B2D8E; --d4: #B84A1C;
+  }
+  body { background: linear-gradient(135deg, var(--bg-primary), var(--bg-secondary), #0f172a); color: var(--text-secondary); font-family: 'Inter', system-ui, sans-serif; min-height: 100vh; }
+  
+  .header { background: linear-gradient(90deg, rgba(15,76,92,0.35), rgba(26,107,74,0.25), rgba(123,45,142,0.25)); border-bottom: 1px solid var(--border); padding: 20px 32px; position: sticky; top: 0; z-index: 100; backdrop-filter: blur(20px); }
+  .header-inner { max-width: 1440px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+  .header-label { font-size: 11px; letter-spacing: 3px; color: var(--text-dim); text-transform: uppercase; }
+  .header-title { font-size: 24px; font-weight: 800; background: linear-gradient(90deg, var(--teal), var(--purple), var(--orange)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .header-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .nav-btns { display: flex; gap: 8px; }
+  .nav-btn { padding: 8px 20px; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text-dim); cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.2s; font-family: inherit; }
+  .nav-btn.active { border-color: rgba(94,234,212,0.5); background: rgba(94,234,212,0.1); color: var(--teal); }
+  .nav-btn:hover { border-color: rgba(94,234,212,0.3); }
+  
+  .container { max-width: 1440px; margin: 0 auto; padding: 24px 32px; }
+  
+  .search-bar { width: 100%; padding: 14px 20px; border-radius: 12px; border: 1px solid var(--border); background: rgba(255,255,255,0.04); color: var(--text-primary); font-size: 14px; outline: none; font-family: inherit; margin-bottom: 24px; transition: border-color 0.2s; }
+  .search-bar:focus { border-color: rgba(94,234,212,0.4); }
+  .search-bar::placeholder { color: var(--text-muted); }
+  
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 32px; }
+  .stat-card { background: var(--bg-card); border-radius: 14px; padding: 20px; border: 1px solid var(--border); text-align: center; }
+  .stat-icon { font-size: 24px; margin-bottom: 8px; }
+  .stat-value { font-size: 32px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .stat-label { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+  
+  .domain-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 20px; }
+  .domain-card { background: var(--bg-card); border-radius: 16px; padding: 24px; border: 1px solid var(--border); cursor: pointer; transition: all 0.3s; position: relative; overflow: hidden; }
+  .domain-card:hover { transform: translateY(-2px); }
+  .domain-card .top-bar { position: absolute; top: 0; left: 0; right: 0; height: 3px; }
+  .domain-header { display: flex; justify-content: space-between; align-items: flex-start; }
+  .domain-icon { font-size: 28px; margin-bottom: 8px; }
+  .domain-label { font-size: 11px; font-weight: 700; letter-spacing: 1px; margin-bottom: 4px; }
+  .domain-name { font-size: 17px; font-weight: 700; color: var(--text-primary); }
+  .domain-meta { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
+  .domain-pct { font-size: 28px; font-weight: 800; }
+  .domain-pct-label { font-size: 11px; color: var(--text-muted); }
+  .progress-bar { margin-top: 16px; height: 6px; border-radius: 3px; background: rgba(255,255,255,0.06); overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+  .subdomain-tags { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .subdomain-tag { font-size: 10px; padding: 3px 8px; border-radius: 4px; font-weight: 600; }
+  
+  .tracker-layout { display: flex; gap: 20px; }
+  .sidebar { width: 280px; flex-shrink: 0; }
+  .sidebar-inner { background: var(--bg-card); border-radius: 14px; border: 1px solid var(--border); overflow: hidden; position: sticky; top: 90px; max-height: calc(100vh - 110px); overflow-y: auto; }
+  .sidebar-domain { padding: 14px 16px; cursor: pointer; display: flex; align-items: center; gap: 10px; border-left: 3px solid transparent; transition: all 0.2s; }
+  .sidebar-domain:hover { background: rgba(255,255,255,0.02); }
+  .sidebar-domain.active { border-left-color: currentColor; }
+  .sidebar-domain-icon { font-size: 18px; }
+  .sidebar-domain-name { font-size: 12px; font-weight: 700; }
+  .sidebar-domain-meta { font-size: 10px; color: var(--text-muted); }
+  .sidebar-sub { padding: 10px 16px 10px 40px; cursor: pointer; font-size: 12px; color: var(--text-dim); transition: all 0.15s; }
+  .sidebar-sub:hover { background: rgba(255,255,255,0.03); }
+  .sidebar-sub.active { color: var(--text-primary); font-weight: 600; background: rgba(255,255,255,0.05); }
+  .sidebar-sub-id { font-family: 'JetBrains Mono', monospace; margin-right: 6px; font-size: 10px; }
+  
+  .content { flex: 1; min-width: 0; }
+  .content-header { background: var(--bg-card); border-radius: 14px; padding: 24px; border: 1px solid var(--border); margin-bottom: 16px; }
+  .content-domain-path { font-size: 11px; font-weight: 700; letter-spacing: 1px; margin-bottom: 6px; }
+  .content-title { font-size: 22px; font-weight: 700; color: var(--text-primary); margin-bottom: 10px; }
+  .content-objective { font-size: 13px; color: var(--text-dim); line-height: 1.6; }
+  
+  .control-card { background: rgba(255,255,255,0.025); border-radius: 12px; padding: 18px 20px; border: 1px solid rgba(255,255,255,0.05); margin-bottom: 10px; }
+  .control-top { display: flex; gap: 16px; align-items: flex-start; }
+  .control-id { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 700; padding: 4px 10px; border-radius: 6px; white-space: nowrap; margin-top: 2px; }
+  .control-text { flex: 1; font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+  .control-status { padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: 700; cursor: pointer; min-width: 130; font-family: inherit; appearance: auto; }
+  .evidence-section { margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.04); }
+  .evidence-label { font-size: 10px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; }
+  .evidence-text { font-size: 11px; color: var(--text-dim); line-height: 1.5; }
+  .evidence-text em { color: var(--teal); font-style: normal; font-weight: 600; }
+  
+  .subdomain-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .subdomain-card { background: var(--bg-card); border-radius: 12px; padding: 18px; border: 1px solid var(--border); cursor: pointer; transition: all 0.2s; }
+  .subdomain-card:hover { border-color: rgba(255,255,255,0.12); }
+  .subdomain-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .subdomain-card-id { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700; }
+  .subdomain-card-pct { font-size: 12px; font-weight: 700; }
+  .subdomain-card-name { font-size: 13px; font-weight: 600; color: var(--text-primary); margin-bottom: 6px; }
+  .subdomain-card-meta { font-size: 11px; color: var(--text-muted); margin-bottom: 10px; }
+  .subdomain-card-bar { height: 4px; border-radius: 2px; background: rgba(255,255,255,0.06); overflow: hidden; }
+  .subdomain-card-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+  
+  .search-result { background: var(--bg-card); border-radius: 10px; padding: 14px 18px; border: 1px solid var(--border); margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+  .search-result-id { font-family: 'JetBrains Mono', monospace; font-size: 12px; padding: 2px 8px; border-radius: 4px; font-weight: 700; }
+  .search-result-path { font-size: 11px; color: var(--text-muted); }
+  .search-result-text { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+  
+  .placeholder { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+  .placeholder-icon { font-size: 48px; margin-bottom: 16px; }
+  
+  .footer { text-align: center; padding: 20px 32px; color: #475569; font-size: 11px; border-top: 1px solid var(--border); margin-top: 40px; }
+  
+  @media (max-width: 768px) {
+    .domain-grid { grid-template-columns: 1fr; }
+    .tracker-layout { flex-direction: column; }
+    .sidebar { width: 100%; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .container { padding: 16px; }
+    .header { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<script type="text/babel">
+const { useState, useMemo, useEffect } = React;
+
+// Evidence guidance mapping by subdomain pattern
+const evidenceGuide = {
+  "1-1": { type: "Documentation", examples: "Approved CS strategy document, strategy review meeting minutes, alignment matrix with Vision 2030 and NCA regulations" },
+  "1-2": { type: "Organizational Records", examples: "CS department org chart, CISO appointment letter, committee charter and meeting minutes, staffing records showing Saudi nationals in CS roles" },
+  "1-3": { type: "Policy Documents", examples: "Approved CS policy set, technical security standards (firewall, DB, OS hardening baselines), distribution/acknowledgment records, version-controlled policy repository" },
+  "1-4": { type: "Governance Documents", examples: "RACI matrix, role descriptions, appointment letters, organizational structure chart, conflict of interest declarations" },
+  "1-5": { type: "Risk Records", examples: "Risk register, risk assessment methodology document, risk treatment plans, risk assessment reports for projects, periodic review records" },
+  "1-6": { type: "Project Documentation", examples: "CS requirements in SDLC/project methodology, vulnerability scan reports pre-launch, secure coding standards, code review records, change management tickets with CS sign-off" },
+  "1-7": { type: "Compliance Records", examples: "International agreement register, compliance mapping to applicable standards (SWIFT, PCI-DSS), gap analysis reports" },
+  "1-8": { type: "Audit Reports", examples: "Internal CS review reports, independent audit reports per GAAS, corrective action plans, audit findings tracker, committee presentation records" },
+  "1-9": { type: "HR Records", examples: "Employment contracts with CS/NDA clauses, background screening records, onboarding CS awareness acknowledgments, access revocation tickets upon termination" },
+  "1-10": { type: "Training Records", examples: "Awareness program plan, training completion records, phishing simulation reports, specialized CS training certificates, awareness campaign materials" },
+  "2-1": { type: "Asset Inventory", examples: "CMDB/asset inventory system export, asset classification labels, acceptable use policy with acknowledgment forms, asset lifecycle records" },
+  "2-2": { type: "IAM Records", examples: "IAM policy, MFA configuration screenshots, PAM solution reports, access review logs, least privilege audit reports, user provisioning/deprovisioning tickets" },
+  "2-3": { type: "System Configuration", examples: "EDR/AV deployment reports, hardening baselines (CIS benchmarks), patch status reports, NTP sync configuration, USB restriction policy/GPO screenshots" },
+  "2-4": { type: "Email Security Config", examples: "Email gateway configuration, phishing filter reports, SPF/DKIM/DMARC DNS records, email backup policy, MFA config for OWA/remote email, APT sandbox reports" },
+  "2-5": { type: "Network Documentation", examples: "Network diagrams with segmentation, firewall rule sets, IPS/IDS reports, DNS security config, DDoS mitigation service records, wireless security assessments, port/protocol restriction matrix" },
+  "2-6": { type: "Mobile/BYOD Records", examples: "MDM enrollment reports, device encryption status, BYOD policy, remote wipe capability evidence, mobile device compliance dashboard screenshots" },
+  "2-7": { type: "Data Protection Records", examples: "Data classification policy (aligned with NCA DCC), DLP tool reports, data handling procedures per classification level, periodic review records" },
+  "2-8": { type: "Cryptographic Records", examples: "Encryption standards document (per NCA National Cryptographic Standards), key management procedures, TLS/SSL certificate inventory, at-rest encryption configuration evidence" },
+  "2-9": { type: "Backup Records", examples: "Backup policy with scope/schedule, backup job reports, recovery test results with RTO/RPO validation, offsite/offline backup evidence" },
+  "2-10": { type: "Vulnerability Reports", examples: "Vulnerability scan reports (Qualys/Nessus/Tenable), remediation tracking dashboard, patch deployment reports, vulnerability feed subscriptions, SLA compliance for remediation" },
+  "2-11": { type: "Pen Test Reports", examples: "Penetration test scope/RoE documents, pen test report with findings, remediation evidence for critical/high findings, retest validation report" },
+  "2-12": { type: "SIEM/Log Records", examples: "SIEM deployment scope, log source inventory, alert rules and use cases, SOC monitoring dashboard screenshots, 12+ month log retention evidence, privileged access log samples" },
+  "2-13": { type: "Incident Records", examples: "Incident response plan, incident classification matrix, NCA notification records, threat intelligence feed subscriptions, IoC sharing records with NCA, incident post-mortem reports" },
+  "2-14": { type: "Physical Security Records", examples: "Physical access control logs, CCTV footage retention policy, data center access lists, secure destruction certificates (for media/paper), equipment tracking records" },
+  "2-15": { type: "Web App Security Records", examples: "WAF deployment and rule configuration, multi-tier architecture diagrams, HTTPS certificate inventory, web app security test reports, user authentication configuration" },
+  "3-1": { type: "BCM Records", examples: "BCP/DRP documents with CS requirements, CS system continuity test results, incident response plans for continuity scenarios, tabletop exercise records, DR site evidence" },
+  "4-1": { type: "Third-Party Records", examples: "Vendor CS assessment questionnaires, contracts with NDA/CS clauses, SLA documents with CS requirements, vendor risk register, incident communication procedures with vendors, KSA-based SOC attestation" },
+  "4-2": { type: "Cloud Security Records", examples: "Cloud CS policy, CSP security assessment reports, tenant isolation evidence, data classification for cloud-hosted data, data return/portability clauses in contracts, CSP compliance certifications" }
+};
+
+function getEvidence(subdomainId) {
+  return evidenceGuide[subdomainId] || { type: "Documentation", examples: "Approved policy, implementation evidence, periodic review records" };
+}
+
+const eccData = {
+  domains: [
+    { id: "1", name: "Cybersecurity Governance", color: "#0F4C5C", icon: "🏛️", subdomains: [
+      { id: "1-1", name: "Cybersecurity Strategy", objective: "Ensure action plans and objectives contribute to compliance with relevant legislative and regulatory requirements.", controls: [
+        { id: "1-1-1", text: "The cybersecurity strategy shall be identified, documented, and approved, supported by the Authorized Official. Strategy goals shall align with relevant legislative and regulatory requirements." },
+        { id: "1-1-2", text: "The entity shall execute an action plan to apply the cybersecurity strategy." },
+        { id: "1-1-3", text: "The cybersecurity strategy shall be reviewed at planned intervals or upon changes to relevant requirements." }
+      ]},
+      { id: "1-2", name: "Cybersecurity Management", objective: "Ensure the Authorized Official complies with and supports implementation and management of cybersecurity programs.", controls: [
+        { id: "1-2-1", text: "A department for cybersecurity shall be established, independent from IT/Communications. Recommended to report directly to the head of the entity." },
+        { id: "1-2-2", text: "All cybersecurity positions shall be filled with full-time and qualified Saudi cybersecurity professionals." },
+        { id: "1-2-3", text: "A cybersecurity supervisory committee shall be established to ensure compliance, support, and monitoring of cybersecurity programs." }
+      ]},
+      { id: "1-3", name: "CS Policies and Procedures", objective: "Ensure cybersecurity requirements and compliance are documented and communicated.", controls: [
+        { id: "1-3-1", text: "Identify, document, and approve cybersecurity policies/procedures including controls, and communicate to relevant personnel." },
+        { id: "1-3-2", text: "Ensure cybersecurity policies and procedures are implemented at the entity." },
+        { id: "1-3-3", text: "CS policies shall be supported by technical security standards (e.g., firewall, databases, OS hardening)." },
+        { id: "1-3-4", text: "Review and update CS policies at planned intervals. Document and approve changes." }
+      ]},
+      { id: "1-4", name: "CS Roles and Responsibilities", objective: "Ensure roles and responsibilities are clearly defined for all parties implementing cybersecurity controls.", controls: [
+        { id: "1-4-1", text: "Identify, document, and approve governance structure, roles, and responsibilities for cybersecurity. Assign responsible persons." },
+        { id: "1-4-2", text: "Review and update cybersecurity roles and responsibilities at planned intervals." }
+      ]},
+      { id: "1-5", name: "CS Risk Management", objective: "Manage cybersecurity risks methodologically to protect information and technology assets.", controls: [
+        { id: "1-5-1", text: "Identify, document, and approve CS risk management methodology and procedures." },
+        { id: "1-5-2", text: "Implement the CS risk management methodology and procedures." },
+        { id: "1-5-3", text: "Implement risk assessment at: early stage of projects, before major infrastructure changes, during third-party planning, before new service/product releases." },
+        { id: "1-5-4", text: "Review and update risk management methodology at planned intervals." }
+      ]},
+      { id: "1-6", name: "CS in IT Project Management", objective: "Ensure cybersecurity requirements are included in project management methodology.", controls: [
+        { id: "1-6-1", text: "Include cybersecurity requirements in project management and change management procedures." },
+        { id: "1-6-2", text: "Project CS requirements: vulnerability assessment/remediation; secure configuration review before launches." },
+        { id: "1-6-3", text: "Software dev requirements: secure coding standards, trusted sources, compliance testing, secure integration, hardening review." },
+        { id: "1-6-4", text: "Periodically review cybersecurity requirements for project management." }
+      ]},
+      { id: "1-7", name: "Compliance with CS Standards/Laws", objective: "Ensure the entity's cybersecurity program complies with relevant legislative and regulatory requirements.", controls: [
+        { id: "1-7-1", text: "Identify and comply with nationally approved international agreements including cybersecurity requirements." }
+      ]},
+      { id: "1-8", name: "Periodical CS Review and Audit", objective: "Ensure cybersecurity controls are implemented per policies, procedures, and requirements.", controls: [
+        { id: "1-8-1", text: "Periodically review the implementation of cybersecurity controls." },
+        { id: "1-8-2", text: "Review/audit CS controls by independent parties per Generally Accepted Auditing Standards (GAAS)." },
+        { id: "1-8-3", text: "Document and present audit results to the supervisory committee and Authorized Official." }
+      ]},
+      { id: "1-9", name: "CS in Human Resources", objective: "Manage cybersecurity risks and requirements for personnel prior to, during, and upon end of employment.", controls: [
+        { id: "1-9-1", text: "Identify, document, and approve CS requirements for personnel prior to, during, and upon employment end." },
+        { id: "1-9-2", text: "Implement CS requirements for personnel." },
+        { id: "1-9-3", text: "Pre-employment: CS responsibility/non-disclosure clauses; screening for CS and privileged positions." },
+        { id: "1-9-4", text: "During employment: CS awareness, compliance with CS policies and procedures." },
+        { id: "1-9-5", text: "Review and revoke personnel powers immediately upon employment end/termination." },
+        { id: "1-9-6", text: "Periodically review CS requirements for personnel." }
+      ]},
+      { id: "1-10", name: "CS Awareness and Training", objective: "Ensure personnel have required security awareness, skills, and training courses.", controls: [
+        { id: "1-10-1", text: "Develop and approve a CS awareness program delivered through multiple channels." },
+        { id: "1-10-2", text: "Implement the approved CS awareness program." },
+        { id: "1-10-3", text: "Program covers: phishing email handling, mobile device security, secure browsing, secure social media usage." },
+        { id: "1-10-4", text: "Provide specialized training for: CS department, developers/IT staff, executives." },
+        { id: "1-10-5", text: "Periodically review implementation of the CS awareness program." }
+      ]}
+    ]},
+    { id: "2", name: "Cybersecurity Defense", color: "#1A6B4A", icon: "🛡️", subdomains: [
+      { id: "2-1", name: "Asset Management", objective: "Ensure an accurate and updated inventory of all information and technology assets.", controls: [
+        { id: "2-1-1", text: "Identify, document, and approve CS requirements for managing IT assets." },
+        { id: "2-1-2", text: "Implement CS requirements for managing IT assets." },
+        { id: "2-1-3", text: "Identify, document, approve, and communicate acceptable use policy for IT assets." },
+        { id: "2-1-4", text: "Implement the acceptable use policy for IT assets." },
+        { id: "2-1-5", text: "Classify, label, and handle IT assets per legislative and regulatory requirements." },
+        { id: "2-1-6", text: "Periodically review CS requirements for managing IT assets." }
+      ]},
+      { id: "2-2", name: "Identity and Access Management", objective: "Protect logical access to IT assets, prevent unauthorized access, restrict to the necessary extent.", controls: [
+        { id: "2-2-1", text: "Identify, document, and approve CS requirements for IAM." },
+        { id: "2-2-2", text: "Implement CS requirements for IAM." },
+        { id: "2-2-3", text: "IAM requirements: single-factor auth, MFA for remote/privileged access, need-to-know/least privilege, PAM, periodic review." },
+        { id: "2-2-4", text: "Periodically review IAM requirements implementation." }
+      ]},
+      { id: "2-3", name: "IS & Processing Facilities Protection", objective: "Ensure protection of information systems and processing facilities against cyber risks.", controls: [
+        { id: "2-3-1", text: "Identify, document, and approve CS requirements for IS protection." },
+        { id: "2-3-2", text: "Implement CS requirements for IS protection." },
+        { id: "2-3-3", text: "Requirements: virus/malware protection, external storage media restrictions, patch management, centralized clock sync." },
+        { id: "2-3-4", text: "Periodically review IS protection requirements." }
+      ]},
+      { id: "2-4", name: "Email Protection", objective: "Ensure protection of the entity's email service against cyber risks.", controls: [
+        { id: "2-4-1", text: "Identify, document, and approve CS requirements for email protection." },
+        { id: "2-4-2", text: "Implement CS requirements for email protection." },
+        { id: "2-4-3", text: "Requirements: phishing/spam filtering, MFA for remote/webmail, archiving/backup, APT protection, SPF/DKIM/DMARC." },
+        { id: "2-4-4", text: "Periodically review email protection requirements." }
+      ]},
+      { id: "2-5", name: "Network Security Management", objective: "Ensure protection of the entity's networks against cyber risks.", controls: [
+        { id: "2-5-1", text: "Identify, document, and approve CS requirements for network security." },
+        { id: "2-5-2", text: "Implement CS requirements for network security." },
+        { id: "2-5-3", text: "Requirements: segmentation/firewall, prod/test isolation, secure browsing, wireless security, IPS, DNS, APT protection, DDoS protection." },
+        { id: "2-5-4", text: "Periodically review network security requirements." }
+      ]},
+      { id: "2-6", name: "Mobile Devices Security", objective: "Ensure protection of mobile devices and secure BYOD handling.", controls: [
+        { id: "2-6-1", text: "Identify, document, and approve CS requirements for mobile devices and BYOD." },
+        { id: "2-6-2", text: "Implement CS requirements for mobile devices and BYOD." },
+        { id: "2-6-3", text: "Requirements: data separation/encryption, controlled use, data deletion on loss/termination, user awareness." },
+        { id: "2-6-4", text: "Periodically review mobile device security requirements." }
+      ]},
+      { id: "2-7", name: "Data and Information Protection", objective: "Ensure confidentiality, integrity, accuracy, and availability of the entity's data.", controls: [
+        { id: "2-7-1", text: "Identify, document, and approve CS requirements for data protection per legislative requirements." },
+        { id: "2-7-2", text: "Implement CS requirements for data protection based on classification level." },
+        { id: "2-7-3", text: "Periodically review data protection requirements." }
+      ]},
+      { id: "2-8", name: "Cryptography", objective: "Ensure proper and efficient use of cryptography to protect electronic information assets.", controls: [
+        { id: "2-8-1", text: "Identify, document, and approve CS requirements for cryptography." },
+        { id: "2-8-2", text: "Implement CS requirements for cryptography." },
+        { id: "2-8-3", text: "Requirements per National Cryptographic Standards: approved crypto systems, secure key management, data encryption in-transit/at-rest." },
+        { id: "2-8-4", text: "Periodically review cryptography requirements." }
+      ]},
+      { id: "2-9", name: "Backup and Recovery Management", objective: "Protect data, information, and technical configurations against cyber risks.", controls: [
+        { id: "2-9-1", text: "Identify, document, and approve CS requirements for backup and recovery." },
+        { id: "2-9-2", text: "Implement CS requirements for backup and recovery." },
+        { id: "2-9-3", text: "Requirements: scope covering critical assets, quick recovery capability, periodic testing of backup effectiveness." },
+        { id: "2-9-4", text: "Periodically review backup and recovery requirements." }
+      ]},
+      { id: "2-10", name: "Vulnerability Management", objective: "Ensure timely detection and effective remediation of technical vulnerabilities.", controls: [
+        { id: "2-10-1", text: "Identify, document, and approve CS requirements for vulnerability management." },
+        { id: "2-10-2", text: "Implement CS requirements for vulnerability management." },
+        { id: "2-10-3", text: "Requirements: periodic assessment, severity classification, risk-based remediation, patch management with verification, trusted feeds." },
+        { id: "2-10-4", text: "Periodically review vulnerability management requirements." }
+      ]},
+      { id: "2-11", name: "Penetration Testing", objective: "Assess cybersecurity defense through simulated cyber-attacks.", controls: [
+        { id: "2-11-1", text: "Identify, document, and approve CS requirements for penetration testing." },
+        { id: "2-11-2", text: "Implement CS requirements for penetration testing." },
+        { id: "2-11-3", text: "Scope: all external services (infrastructure, websites, web/mobile apps, email, remote access). Conduct periodically." },
+        { id: "2-11-4", text: "Periodically review penetration testing requirements." }
+      ]},
+      { id: "2-12", name: "CS Event Logs and Monitoring", objective: "Ensure timely collection, analysis, and monitoring of cybersecurity event logs.", controls: [
+        { id: "2-12-1", text: "Identify, document, and approve CS requirements for event logs and monitoring." },
+        { id: "2-12-2", text: "Implement CS requirements for event logs and monitoring." },
+        { id: "2-12-3", text: "Requirements: logs for critical assets, privileged/remote access logs, SIEM, continuous monitoring, 12-month minimum retention." },
+        { id: "2-12-4", text: "Periodically review event logs and monitoring requirements." }
+      ]},
+      { id: "2-13", name: "CS Incident and Threat Management", objective: "Ensure timely identification, detection, and effective management of incidents and threats.", controls: [
+        { id: "2-13-1", text: "Identify, document, and approve requirements for incident and threat management." },
+        { id: "2-13-2", text: "Implement requirements for incident and threat management." },
+        { id: "2-13-3", text: "Requirements: response plans, classification, NCA reporting, sharing IoCs/intelligence with NCA, threat feeds." },
+        { id: "2-13-4", text: "Periodically review incident and threat management requirements." }
+      ]},
+      { id: "2-14", name: "Physical Security", objective: "Protect IT assets against unauthorized physical access, loss, theft, and damage.", controls: [
+        { id: "2-14-1", text: "Identify, document, and approve CS requirements for physical security." },
+        { id: "2-14-2", text: "Implement CS requirements for physical security." },
+        { id: "2-14-3", text: "Requirements: authorized access to critical areas, CCTV monitoring, log protection, secure destruction/re-use, device security." },
+        { id: "2-14-4", text: "Periodically review physical security requirements." }
+      ]},
+      { id: "2-15", name: "Web Application Security", objective: "Ensure protection of external web applications against cyber risks.", controls: [
+        { id: "2-15-1", text: "Identify, document, and approve CS requirements for web application protection." },
+        { id: "2-15-2", text: "Implement CS requirements for web application protection." },
+        { id: "2-15-3", text: "Requirements: WAF, multi-tier architecture, HTTPS, secure usage policy, authentication with impact-based factor selection." },
+        { id: "2-15-4", text: "Periodically review web application security requirements." }
+      ]}
+    ]},
+    { id: "3", name: "Cybersecurity Resilience", color: "#7B2D8E", icon: "🔄", subdomains: [
+      { id: "3-1", name: "CS Resilience Aspects of BCM", objective: "Ensure inclusion of cybersecurity resilience requirements in business continuity management.", controls: [
+        { id: "3-1-1", text: "Identify, document, and approve CS requirements for BCM." },
+        { id: "3-1-2", text: "Implement CS requirements for BCM." },
+        { id: "3-1-3", text: "Requirements: continuity of CS systems/procedures, incident response plans for continuity, disaster recovery plans." },
+        { id: "3-1-4", text: "Periodically review CS requirements for BCM." }
+      ]}
+    ]},
+    { id: "4", name: "Third-Party & Cloud Computing CS", color: "#B84A1C", icon: "☁️", subdomains: [
+      { id: "4-1", name: "Third-Party Cybersecurity", objective: "Protect entity's assets against third-party cybersecurity risks.", controls: [
+        { id: "4-1-1", text: "Identify, document, and approve CS requirements for third-party contracts/agreements." },
+        { id: "4-1-2", text: "Include: non-disclosure, secure data removal, incident communication, obligate third parties to apply CS requirements." },
+        { id: "4-1-3", text: "IT/CS outsourcing: conduct risk assessment before signing, CS managed service centers using remote access shall be in KSA." },
+        { id: "4-1-4", text: "Periodically review CS requirements for third parties." }
+      ]},
+      { id: "4-2", name: "Cloud Computing and Hosting CS", objective: "Ensure proper remediation of cyber risks for cloud computing and hosting.", controls: [
+        { id: "4-2-1", text: "Identify, document, and approve CS requirements for cloud computing and hosting." },
+        { id: "4-2-2", text: "Implement CS requirements for cloud computing and hosting." },
+        { id: "4-2-3", text: "Requirements: data protection per classification with data return upon completion, separation of virtual environments from other tenants." },
+        { id: "4-2-4", text: "Periodically review CS requirements for cloud computing and hosting." }
+      ]}
+    ]}
+  ]
+};
+
+const STATUS_OPTIONS = [
+  { value: "not_started", label: "Not Started", color: "#6B7280", bg: "#F3F4F6" },
+  { value: "in_progress", label: "In Progress", color: "#D97706", bg: "#FEF3C7" },
+  { value: "implemented", label: "Implemented", color: "#059669", bg: "#D1FAE5" },
+  { value: "not_applicable", label: "N/A", color: "#9CA3AF", bg: "#F9FAFB" }
+];
+function getStatusInfo(v) { return STATUS_OPTIONS.find(s => s.value === v) || STATUS_OPTIONS[0]; }
+
+function App() {
+  const [selectedDomain, setSelectedDomain] = useState(null);
+  const [selectedSubdomain, setSelectedSubdomain] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statuses, setStatuses] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("ecc_statuses") || "{}"); } catch { return {}; }
+  });
+  const [view, setView] = useState("overview");
+  const [showEvidence, setShowEvidence] = useState(true);
+
+  useEffect(() => { try { localStorage.setItem("ecc_statuses", JSON.stringify(statuses)); } catch {} }, [statuses]);
+
+  const totalControls = useMemo(() => {
+    let c = 0; eccData.domains.forEach(d => d.subdomains.forEach(s => c += s.controls.length)); return c;
+  }, []);
+
+  const stats = useMemo(() => {
+    let impl = 0, prog = 0, ns = 0, na = 0;
+    eccData.domains.forEach(d => d.subdomains.forEach(s => s.controls.forEach(c => {
+      const st = statuses[c.id] || "not_started";
+      if (st === "implemented") impl++; else if (st === "in_progress") prog++; else if (st === "not_applicable") na++; else ns++;
+    })));
+    return { implemented: impl, inProgress: prog, notStarted: ns, na, total: totalControls };
+  }, [statuses, totalControls]);
+
+  const domainStats = useMemo(() => {
+    const r = {};
+    eccData.domains.forEach(d => {
+      let t = 0, i = 0;
+      d.subdomains.forEach(s => s.controls.forEach(c => { t++; if (statuses[c.id] === "implemented") i++; }));
+      r[d.id] = { total: t, implemented: i, pct: t > 0 ? Math.round((i / t) * 100) : 0 };
+    });
+    return r;
+  }, [statuses]);
+
+  const filteredControls = useMemo(() => {
+    if (!searchQuery.trim()) return null;
+    const q = searchQuery.toLowerCase();
+    const results = [];
+    eccData.domains.forEach(d => d.subdomains.forEach(s => s.controls.forEach(c => {
+      if (c.id.toLowerCase().includes(q) || c.text.toLowerCase().includes(q) || s.name.toLowerCase().includes(q))
+        results.push({ ...c, subdomain: s.name, subdomainId: s.id, domain: d.name, domainColor: d.color });
+    })));
+    return results;
+  }, [searchQuery]);
+
+  const compliancePct = stats.total > 0 ? Math.round((stats.implemented / stats.total) * 100) : 0;
+  const handleStatusChange = (id, v) => setStatuses(p => ({ ...p, [id]: v }));
+
+  return (
+    <div>
+      <div className="header">
+        <div className="header-inner">
+          <div>
+            <div className="header-label">National Cybersecurity Authority</div>
+            <div className="header-title">Essential Cybersecurity Controls — ECC-2:2024</div>
+            <div className="header-sub">4 Domains · 28 Subdomains · 108 Main Controls · Interactive Compliance Tracker</div>
+          </div>
+          <div className="nav-btns">
+            {["overview", "tracker"].map(v => (
+              <button key={v} className={`nav-btn ${view === v ? "active" : ""}`}
+                onClick={() => { setView(v); setSelectedDomain(null); setSelectedSubdomain(null); }}>
+                {v === "overview" ? "📊 Overview" : "📋 Tracker"}
+              </button>
+            ))}
+            <button className={`nav-btn ${showEvidence ? "active" : ""}`} onClick={() => setShowEvidence(!showEvidence)}>
+              📝 Evidence
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="container">
+        <input className="search-bar" type="text" placeholder="🔍  Search controls by ID, keyword, or subdomain..."
+          value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
+
+        {filteredControls && filteredControls.length > 0 ? (
+          <div>
+            <div style={{fontSize:13,color:"var(--text-dim)",marginBottom:16}}>{filteredControls.length} results for "{searchQuery}"</div>
+            {filteredControls.map(c => {
+              const ev = getEvidence(c.subdomainId);
+              return (
+                <div key={c.id} className="search-result" style={{flexDirection:"column",alignItems:"stretch"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:16}}>
+                    <div style={{flex:1}}>
+                      <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}>
+                        <span className="search-result-id" style={{background:c.domainColor+"33",color:c.domainColor}}>{c.id}</span>
+                        <span className="search-result-path">{c.domain} → {c.subdomain}</span>
+                      </div>
+                      <div className="search-result-text">{c.text}</div>
+                    </div>
+                    <select className="control-status" value={statuses[c.id]||"not_started"} onChange={e=>handleStatusChange(c.id,e.target.value)}
+                      style={{borderColor:getStatusInfo(statuses[c.id]||"not_started").color+"33",background:getStatusInfo(statuses[c.id]||"not_started").bg,color:getStatusInfo(statuses[c.id]||"not_started").color}}>
+                      {STATUS_OPTIONS.map(s=><option key={s.value} value={s.value}>{s.label}</option>)}
+                    </select>
+                  </div>
+                  {showEvidence && <div className="evidence-section">
+                    <div className="evidence-label">📎 Acceptable Evidence ({ev.type})</div>
+                    <div className="evidence-text">{ev.examples}</div>
+                  </div>}
+                </div>
+              );
+            })}
+          </div>
+        ) : filteredControls && filteredControls.length === 0 ? (
+          <div className="placeholder">No controls found matching "{searchQuery}"</div>
+        ) : view === "overview" ? (
+          <>
+            <div className="stats-grid">
+              {[
+                {label:"Total Controls",value:stats.total,color:"var(--teal)",icon:"📋"},
+                {label:"Implemented",value:stats.implemented,color:"var(--green)",icon:"✅"},
+                {label:"In Progress",value:stats.inProgress,color:"var(--amber)",icon:"🔄"},
+                {label:"Not Started",value:stats.notStarted,color:"var(--text-dim)",icon:"⏳"},
+                {label:"Compliance",value:compliancePct+"%",color:compliancePct>=70?"var(--green)":compliancePct>=40?"var(--amber)":"var(--red)",icon:"📊"}
+              ].map((s,i) => (
+                <div key={i} className="stat-card">
+                  <div className="stat-icon">{s.icon}</div>
+                  <div className="stat-value" style={{color:s.color}}>{s.value}</div>
+                  <div className="stat-label">{s.label}</div>
+                </div>
+              ))}
+            </div>
+            <div className="domain-grid">
+              {eccData.domains.map(d => {
+                const ds = domainStats[d.id];
+                return (
+                  <div key={d.id} className="domain-card" onClick={() => {setSelectedDomain(d);setView("tracker");}}>
+                    <div className="top-bar" style={{background:d.color}} />
+                    <div className="domain-header">
+                      <div>
+                        <div className="domain-icon">{d.icon}</div>
+                        <div className="domain-label" style={{color:d.color}}>DOMAIN {d.id}</div>
+                        <div className="domain-name">{d.name}</div>
+                        <div className="domain-meta">{d.subdomains.length} Subdomains · {ds.total} Controls</div>
+                      </div>
+                      <div style={{textAlign:"right"}}>
+                        <div className="domain-pct" style={{color:d.color}}>{ds.pct}%</div>
+                        <div className="domain-pct-label">Compliance</div>
+                      </div>
+                    </div>
+                    <div className="progress-bar"><div className="progress-fill" style={{width:ds.pct+"%",background:d.color}} /></div>
+                    <div className="subdomain-tags">
+                      {d.subdomains.map(s => <span key={s.id} className="subdomain-tag" style={{background:d.color+"18",color:d.color}}>{s.id}</span>)}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        ) : (
+          <div className="tracker-layout">
+            <div className="sidebar">
+              <div className="sidebar-inner">
+                {eccData.domains.map(d => (
+                  <div key={d.id}>
+                    <div className={`sidebar-domain ${selectedDomain?.id===d.id?"active":""}`}
+                      style={{color:d.color}} onClick={() => {setSelectedDomain(selectedDomain?.id===d.id?null:d);setSelectedSubdomain(null);}}>
+                      <span className="sidebar-domain-icon">{d.icon}</span>
+                      <div>
+                        <div className="sidebar-domain-name" style={{color:selectedDomain?.id===d.id?d.color:"var(--text-dim)"}}>{d.id}. {d.name}</div>
+                        <div className="sidebar-domain-meta">{domainStats[d.id].pct}% · {d.subdomains.length} sub</div>
+                      </div>
+                    </div>
+                    {selectedDomain?.id===d.id && d.subdomains.map(s => (
+                      <div key={s.id} className={`sidebar-sub ${selectedSubdomain?.id===s.id?"active":""}`} onClick={() => setSelectedSubdomain(s)}>
+                        <span className="sidebar-sub-id" style={{color:d.color}}>{s.id}</span>{s.name}
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="content">
+              {selectedSubdomain ? (
+                <div>
+                  <div className="content-header">
+                    <div className="content-domain-path" style={{color:selectedDomain.color}}>{selectedDomain.name} → {selectedSubdomain.id}</div>
+                    <div className="content-title">{selectedSubdomain.name}</div>
+                    <div className="content-objective"><strong style={{color:"var(--text-primary)"}}>Objective:</strong> {selectedSubdomain.objective}</div>
+                  </div>
+                  {selectedSubdomain.controls.map(c => {
+                    const st = getStatusInfo(statuses[c.id]||"not_started");
+                    const ev = getEvidence(selectedSubdomain.id);
+                    return (
+                      <div key={c.id} className="control-card">
+                        <div className="control-top">
+                          <div className="control-id" style={{color:selectedDomain.color,background:selectedDomain.color+"18"}}>{c.id}</div>
+                          <div className="control-text">{c.text}</div>
+                          <select className="control-status" value={statuses[c.id]||"not_started"} onChange={e=>handleStatusChange(c.id,e.target.value)}
+                            style={{borderColor:st.color+"33",background:st.bg,color:st.color}}>
+                            {STATUS_OPTIONS.map(s=><option key={s.value} value={s.value}>{s.label}</option>)}
+                          </select>
+                        </div>
+                        {showEvidence && <div className="evidence-section">
+                          <div className="evidence-label">📎 Acceptable Evidence ({ev.type})</div>
+                          <div className="evidence-text">{ev.examples}</div>
+                        </div>}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : selectedDomain ? (
+                <div>
+                  <div className="content-header">
+                    <div style={{fontSize:36,marginBottom:10}}>{selectedDomain.icon}</div>
+                    <div className="content-title">Domain {selectedDomain.id}: {selectedDomain.name}</div>
+                    <div style={{fontSize:13,color:"var(--text-dim)"}}>{selectedDomain.subdomains.length} Subdomains · {domainStats[selectedDomain.id].total} Controls · {domainStats[selectedDomain.id].pct}% Compliance</div>
+                  </div>
+                  <div className="subdomain-grid">
+                    {selectedDomain.subdomains.map(s => {
+                      let impl = 0; s.controls.forEach(c => { if (statuses[c.id]==="implemented") impl++; });
+                      const pct = s.controls.length>0?Math.round((impl/s.controls.length)*100):0;
+                      return (
+                        <div key={s.id} className="subdomain-card" onClick={() => setSelectedSubdomain(s)}>
+                          <div className="subdomain-card-header">
+                            <span className="subdomain-card-id" style={{color:selectedDomain.color}}>{s.id}</span>
+                            <span className="subdomain-card-pct" style={{color:selectedDomain.color}}>{pct}%</span>
+                          </div>
+                          <div className="subdomain-card-name">{s.name}</div>
+                          <div className="subdomain-card-meta">{s.controls.length} controls</div>
+                          <div className="subdomain-card-bar"><div className="subdomain-card-fill" style={{width:pct+"%",background:selectedDomain.color}} /></div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : (
+                <div className="placeholder">
+                  <div className="placeholder-icon">👈</div>
+                  <div>Select a domain from the sidebar to begin</div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+      <div className="footer">
+        NCA Essential Cybersecurity Controls (ECC-2:2024) — Interactive Dashboard · Built for compliance tracking · Not an official NCA tool
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.render(React.createElement(App), document.getElementById("app"));
+</script>
+</body>
+</html>
